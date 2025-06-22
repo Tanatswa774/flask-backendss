@@ -1,25 +1,26 @@
 import subprocess
+import time
 
-def adb_exec(cmd, device=None):
-    base = ['adb']
-    if device:
-        base += ['-s', device]
-    full_cmd = base + cmd
-    return subprocess.run(full_cmd, stdout=subprocess.PIPE).stdout.decode()
+def take_screenshot(device_id):
+    subprocess.run(["adb", "-s", device_id, "shell", "screencap", "-p", "/sdcard/screen.png"])
+    subprocess.run(["adb", "-s", device_id, "pull", "/sdcard/screen.png", "screen.png"])
 
-def take_screenshot(device, path="screen.png"):
-    adb_exec(["shell", "screencap", "-p", "/sdcard/screen.png"], device)
-    adb_exec(["pull", "/sdcard/screen.png", path], device)
+def tap(device_id, x, y):
+    subprocess.run(["adb", "-s", device_id, "shell", "input", "tap", str(x), str(y)])
 
-def tap(device, x, y):
-    adb_exec(["shell", "input", "tap", str(x), str(y)], device)
-
-def swipe_map(device, direction="left"):
+def swipe_map(device_id, direction):
     if direction == "left":
-        adb_exec(["shell", "input", "swipe", "800", "500", "200", "500", "300"], device)
+        subprocess.run(["adb", "-s", device_id, "shell", "input", "swipe", "800", "500", "200", "500", "300"])
     elif direction == "right":
-        adb_exec(["shell", "input", "swipe", "200", "500", "800", "500", "300"], device)
+        subprocess.run(["adb", "-s", device_id, "shell", "input", "swipe", "200", "500", "800", "500", "300"])
     elif direction == "up":
-        adb_exec(["shell", "input", "swipe", "500", "800", "500", "200", "300"], device)
+        subprocess.run(["adb", "-s", device_id, "shell", "input", "swipe", "500", "800", "500", "200", "300"])
     elif direction == "down":
-        adb_exec(["shell", "input", "swipe", "500", "200", "500", "800", "300"], device)
+        subprocess.run(["adb", "-s", device_id, "shell", "input", "swipe", "500", "200", "500", "800", "300"])
+
+def zoom_out(device_id):
+    print("[ACTION] Zooming out the map")
+    for _ in range(3):
+        subprocess.run(["adb", "-s", device_id, "shell", "input", "swipe", "300", "500", "500", "500", "100"])
+        subprocess.run(["adb", "-s", device_id, "shell", "input", "swipe", "800", "500", "600", "500", "100"])
+        time.sleep(0.5)
