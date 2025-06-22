@@ -1,6 +1,5 @@
 from flask import Flask, jsonify, request, send_file
 from flask_cors import CORS
-from werkzeug.security import generate_password_hash, check_password_hash
 import subprocess
 import threading
 import sys
@@ -10,45 +9,17 @@ from typing import Optional, Dict
 app = Flask(__name__)
 CORS(app)
 
-users: Dict[str, str] = {}
-bot_processes: Dict[str, Optional[subprocess.Popen]] = {}
-process_locks: Dict[str, threading.Lock] = {}
-
-@app.route("/register", methods=["POST"])
-def register():
-    data = request.get_json()
-    username = data.get("username")
-    password = data.get("password")
-
-    if not username or not password:
-        return jsonify({"error": "Username and password required"}), 400
-    if username in users:
-        return jsonify({"error": "Username already exists"}), 409
-
-    users[username] = generate_password_hash(password)
-    bot_processes[username] = None
-    process_locks[username] = threading.Lock()
-    return jsonify({"status": "registered", "username": username})
-
-@app.route("/login", methods=["POST"])
-def login():
-    data = request.get_json()
-    username = data.get("username")
-    password = data.get("password")
-
-    if not username or not password:
-        return jsonify({"error": "Username and password required"}), 400
-    if username not in users or not check_password_hash(users[username], password):
-        return jsonify({"error": "Invalid credentials"}), 403
-
-    return jsonify({"status": "logged_in", "username": username})
+# Use a single user
+USERNAME = "tanatswa"
+bot_processes: Dict[str, Optional[subprocess.Popen]] = {USERNAME: None}
+process_locks: Dict[str, threading.Lock] = {USERNAME: threading.Lock()}
 
 @app.route("/start", methods=["POST"])
 def start_bot():
     data = request.get_json()
     username = data.get("username")
 
-    if username not in users:
+    if username != USERNAME:
         return jsonify({"error": "Unauthorized"}), 403
 
     with process_locks[username]:
@@ -66,7 +37,7 @@ def stop_bot():
     data = request.get_json()
     username = data.get("username")
 
-    if username not in users:
+    if username != USERNAME:
         return jsonify({"error": "Unauthorized"}), 403
 
     with process_locks[username]:
@@ -82,15 +53,12 @@ def stop_bot():
 
         return jsonify({"status": "not running"}), 404
 
-@app.route("/status", methods=["GET", "POST"])
+@app.route("/status", methods=["POST"])
 def status():
-    if request.method == "GET":
-        return jsonify({"error": "Send a POST request with { username } in JSON body"}), 400
-
     data = request.get_json()
     username = data.get("username")
 
-    if username not in users:
+    if username != USERNAME:
         return jsonify({"error": "Unauthorized"}), 403
 
     process = bot_processes.get(username)
@@ -100,6 +68,9 @@ def status():
 def get_gem_count():
     data = request.get_json()
     username = data.get("username")
+
+    if username != USERNAME:
+        return jsonify({"error": "Unauthorized"}), 403
 
     filename = f"gems_found_{username}.json"
     try:
